@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NutriAI — demo</title>
+<style>
+  :root { --bg:#f6f8f4; --card:#fff; --ink:#1f2a1f; --muted:#6b776b; --verde:#2f8f4e; --verde2:#e4f3e8; --borda:#e2e8e0; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:15px/1.45 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background:var(--bg); color:var(--ink); }
+  header { padding:16px 20px; background:var(--verde); color:#fff; }
+  header h1 { margin:0; font-size:20px; } header p { margin:2px 0 0; opacity:.85; font-size:13px; }
+  main { display:grid; grid-template-columns: minmax(0,1.1fr) minmax(0,1fr); gap:16px; padding:16px; max-width:1300px; margin:auto; }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+  .painel { background:var(--card); border:1px solid var(--borda); border-radius:14px; padding:14px; }
+  h2 { font-size:15px; margin:0 0 10px; }
+  #chat { height:520px; overflow-y:auto; display:flex; flex-direction:column; gap:10px; padding:4px; }
+  .msg { max-width:88%; padding:9px 12px; border-radius:12px; white-space:pre-wrap; }
+  .eu { align-self:flex-end; background:var(--verde); color:#fff; border-bottom-right-radius:3px; }
+  .ia { align-self:flex-start; background:var(--verde2); border-bottom-left-radius:3px; }
+  .meta-intent { font-size:11px; color:var(--muted); margin-top:4px; }
+  .cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); gap:8px; margin-top:8px; white-space:normal; }
+  .rc { background:#fff; border:1px solid var(--borda); border-radius:10px; padding:8px; font-size:13px; }
+  .rc b { display:block; margin-bottom:3px; }
+  .rc small { color:var(--muted); display:block; }
+  .rc .chips span { display:inline-block; background:var(--verde2); border-radius:99px; padding:1px 7px; margin:3px 3px 0 0; font-size:11px; }
+  .rc .acoes { margin-top:6px; display:flex; gap:4px; }
+  button { font:inherit; cursor:pointer; border-radius:8px; border:1px solid var(--borda); background:#fff; padding:5px 10px; }
+  button.prim { background:var(--verde); color:#fff; border-color:var(--verde); }
+  .sug { display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
+  .sug button { font-size:12px; border-radius:99px; padding:3px 10px; background:#fff; }
+  form.envio { display:flex; gap:8px; margin-top:10px; }
+  input, select { font:inherit; padding:7px 9px; border:1px solid var(--borda); border-radius:8px; min-width:0; }
+  form.envio input { flex:1; }
+  .grade { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+  .grade label { font-size:12px; color:var(--muted); display:flex; flex-direction:column; gap:3px; }
+  .kpis { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:10px; }
+  .kpi { background:var(--verde2); border-radius:10px; padding:8px; text-align:center; }
+  .kpi b { display:block; font-size:18px; } .kpi span { font-size:11px; color:var(--muted); }
+  table { width:100%; border-collapse:collapse; font-size:13px; margin-top:8px; }
+  td, th { border-bottom:1px solid var(--borda); padding:5px 4px; text-align:left; vertical-align:top; }
+  th { font-size:12px; color:var(--muted); font-weight:600; }
+  .lado { display:flex; flex-direction:column; gap:16px; }
+  #busca-res { font-size:13px; margin-top:6px; }
+  .nota { font-size:12px; color:var(--muted); }
+  details summary { cursor:pointer; font-size:13px; margin-top:8px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🥗 NutriAI — demonstração</h1>
+  <p>IA 100% em JavaScript no navegador: busca inteligente, recomendação que aprende, metas, cardápio otimizado e chat.</p>
+</header>
+<main>
+  <section class="painel">
+    <h2>Assistente</h2>
+    <div id="chat"></div>
+    <form class="envio" id="f-chat"><input id="in-chat" placeholder="Ex.: jantar vegano rápido, sem cebola" autocomplete="off"><button class="prim">Enviar</button></form>
+    <p class="nota">O gosto aprendido fica salvo neste navegador. <button id="reset" type="button" style="font-size:11px;padding:2px 8px">Esquecer meus dados</button></p>
+  </section>
+
+  <div class="lado">
+    <section class="painel">
+      <h2>Busca inteligente (tolera erros: tente “frnago bata doce”)</h2>
+      <input id="in-busca" style="width:100%" placeholder="Buscar receitas...">
+      <div id="busca-res"></div>
+    </section>
+
+    <section class="painel">
+      <h2>Metas diárias + cardápio otimizado</h2>
+      <form id="f-metas" class="grade">
+        <label>Peso (kg)<input name="peso" type="number" value="70" step="0.1"></label>
+        <label>Altura (cm)<input name="altura" type="number" value="170"></label>
+        <label>Idade<input name="idade" type="number" value="30"></label>
+        <label>Sexo<select name="sexo"><option value="f">Feminino</option><option value="m">Masculino</option></select></label>
+        <label>Atividade<select name="atividade"><option value="sedentario">Sedentário</option><option value="leve" selected>Leve (1–3x)</option><option value="moderado">Moderado (3–5x)</option><option value="intenso">Intenso (6–7x)</option><option value="atleta">Atleta</option></select></label>
+        <label>Objetivo<select name="objetivo"><option value="perder">Emagrecer</option><option value="manter" selected>Manter</option><option value="ganhar">Ganhar massa</option></select></label>
+        <label>Restrição<select name="restricao"><option value="">Nenhuma</option><option value="vegetariano">Vegetariano</option><option value="vegano">Vegano</option><option value="sem_lactose">Sem lactose</option><option value="sem_gluten">Sem glúten</option><option value="low_carb">Low carb</option></select></label>
+        <label>Dias<input name="dias" type="number" value="5" min="1" max="14"></label>
+        <label>&nbsp;<button class="prim">Calcular e gerar</button></label>
+      </form>
+      <div id="metas-res"></div>
+      <div id="cardapio-res"></div>
+    </section>
+  </div>
+</main>
+
+<script src="nutri-ai.js"></script>
+<script src="receitas-exemplo.js"></script>
+<script>
+  const ia = new NutriAI(window.RECEITAS);
+  const $ = s => document.querySelector(s);
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const md = s => esc(s).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+  const rotulos = { vegano: 'vegana', vegetariano: 'vegetariana', sem_lactose: 'sem lactose', sem_gluten: 'sem glúten', low_carb: 'low carb', proteico: 'proteica' };
+
+  function card(r) {
+    const porcao = r.porcoes && r.porcoes !== 1 ? ` · ${String(r.porcoes).replace('.', ',')}x porção = ${r.kcalPorcao} kcal` : '';
+    const chips = (r.motivos || []).concat((r.restricoes || []).filter(x => x !== 'proteico').map(x => rotulos[x])).slice(0, 4);
+    return `<div class="rc"><b>${esc(r.nome)}</b><small>${r.kcal} kcal · ${r.proteina} g prot · ${r.carbo} g carb${r.tempo ? ' · ' + r.tempo + ' min' : ''}${porcao}</small>
+      <div class="chips">${chips.map(c => `<span>${esc(c)}</span>`).join('')}</div>
+      <div class="acoes"><button data-fb="curtir" data-id="${r.id}" title="Curtir">👍</button><button data-fb="descurtir" data-id="${r.id}" title="Não curti">👎</button><button data-fb="cozinhar" data-id="${r.id}" title="Fiz esta receita">Fiz ✔</button></div></div>`;
+  }
+
+  function addMsg(html, quem) {
+    const d = document.createElement('div');
+    d.className = 'msg ' + quem; d.innerHTML = html;
+    $('#chat').appendChild(d); $('#chat').scrollTop = 1e9;
+  }
+
+  function enviar(texto) {
+    if (!texto.trim()) return;
+    addMsg(esc(texto), 'eu');
+    const t0 = performance.now();
+    const r = ia.responder(texto);
+    const ms = (performance.now() - t0).toFixed(1);
+    let html = md(r.texto);
+    if (r.receitas && r.receitas.length) html += `<div class="cards">${r.receitas.map(card).join('')}</div>`;
+    if (r.cardapio) { html += '<div style="white-space:normal"><em class="nota">Cardápio completo exibido no painel ao lado →</em></div>'; mostrarCardapio(r.cardapio); }
+    if (r.metas) mostrarMetas(r.metas);
+    if (r.sugestoes && r.sugestoes.length) html += `<div class="sug">${r.sugestoes.map(s => `<button data-sug="${esc(s)}">${esc(s)}</button>`).join('')}</div>`;
+    html += `<div class="meta-intent">intenção: ${r.intent} · confiança ${r.confianca} · ${ms} ms</div>`;
+    addMsg(html, 'ia');
+  }
+
+  document.addEventListener('click', ev => {
+    const b = ev.target.closest('button'); if (!b) return;
+    if (b.dataset.sug) enviar(b.dataset.sug);
+    if (b.dataset.fb) { ia.feedback(b.dataset.id, b.dataset.fb); b.parentElement.innerHTML = '<small>✔ aprendido — próximas sugestões vão considerar isso</small>'; }
+  });
+  $('#f-chat').addEventListener('submit', ev => { ev.preventDefault(); enviar($('#in-chat').value); $('#in-chat').value = ''; });
+  $('#reset').addEventListener('click', () => { ia.resetarUsuario(); $('#chat').innerHTML = ''; addMsg('Pronto, esqueci seus dados e preferências.', 'ia'); });
+
+  // Busca ao vivo
+  let tm;
+  $('#in-busca').addEventListener('input', ev => {
+    clearTimeout(tm);
+    tm = setTimeout(() => {
+      const q = ev.target.value;
+      if (!q.trim()) { $('#busca-res').innerHTML = ''; return; }
+      const r = ia.buscar(q, { k: 6 });
+      const corr = r.correcoes.length ? `<div class="nota">Buscando por: ${r.correcoes.map(([a, b]) => `<s>${esc(a)}</s> → <b>${esc(b)}</b>`).join(', ')}</div>` : '';
+      $('#busca-res').innerHTML = corr + (r.resultados.length ? `<div class="cards">${r.resultados.map(card).join('')}</div>` : '<p class="nota">Nada encontrado.</p>');
+    }, 120);
+  });
+
+  function mostrarMetas(m) {
+    $('#metas-res').innerHTML = `<div class="kpis">
+      <div class="kpi"><b>${m.kcal}</b><span>kcal/dia</span></div><div class="kpi"><b>${m.proteina} g</b><span>proteína</span></div>
+      <div class="kpi"><b>${m.carbo} g</b><span>carboidrato</span></div><div class="kpi"><b>${m.gordura} g</b><span>gordura</span></div></div>
+      <p class="nota">TMB ${m.tmb} kcal · gasto total ${m.gastoTotal} kcal · água ~${(m.aguaMl / 1000).toFixed(1)} L · fibras ${m.fibras} g · IMC ${m.imc} (${m.imcClasse}). ${m.avisos.join(' ')}</p>`;
+  }
+  function mostrarCardapio(c) {
+    const linhas = c.dias.map(d => `<tr><td><b>Dia ${d.dia}</b><br><small>${d.totais.kcal} kcal<br>${d.totais.proteina} g prot<br>${d.aderencia}% da meta</small></td><td>${
+      d.refeicoes.map(r => `<div><small>${r.rotulo}:</small> ${esc(r.receita.nome)}${r.porcoes !== 1 ? ` <small>(${String(r.porcoes).replace('.', ',')}x)</small>` : ''} <small>· ${r.kcal} kcal</small></div>`).join('')}</td></tr>`).join('');
+    $('#cardapio-res').innerHTML = `<table><tr><th>Dia</th><th>Refeições (porção ajustada pela IA)</th></tr>${linhas}</table>
+      <p class="nota">Média: ${c.resumo.kcal} kcal · ${c.resumo.proteina} g prot · ${c.resumo.carbo} g carb · ${c.resumo.gordura} g gord — aderência ${c.resumo.aderencia}% · ${c.resumo.receitasDiferentes} receitas diferentes</p>
+      <details><summary>🛒 Lista de compras (${c.listaCompras.length} itens)</summary><table>${c.listaCompras.map(i => `<tr><td>${esc(i.item)}</td><td>${esc(i.quantidade)}</td></tr>`).join('')}</table></details>`;
+  }
+  $('#f-metas').addEventListener('submit', ev => {
+    ev.preventDefault();
+    const d = Object.fromEntries(new FormData(ev.target));
+    const metas = ia.calcularMetas(d);
+    if (metas.erro) { $('#metas-res').textContent = metas.erro; return; }
+    ia.usuario.perfil = metas.perfil; ia.usuario.metas = metas; ia._salvar();
+    mostrarMetas(metas);
+    const t0 = performance.now();
+    const c = ia.gerarCardapio({ metas, dias: +d.dias || 5, filtros: { restricoes: d.restricao ? [d.restricao] : [] } });
+    if (c.erro) { $('#cardapio-res').textContent = c.erro; return; }
+    mostrarCardapio(c);
+    $('#cardapio-res').insertAdjacentHTML('beforeend', `<p class="nota">Otimizado em ${(performance.now() - t0).toFixed(1)} ms.</p>`);
+  });
+
+  addMsg(md('Olá! 👋 Experimente:\n• "quero um jantar vegano rápido"\n• "tenho 68 kg, 1,65 m, 29 anos, mulher, treino 3x por semana, quero emagrecer"\n• "monte um cardápio de 3 dias sem lactose"\n• "o que usar no lugar do açúcar?"'), 'ia');
+</script>
+</body>
+</html>
